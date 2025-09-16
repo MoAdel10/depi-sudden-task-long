@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-con1
+data:
+  index.html: |
+    <html>
+      <body>
+        <h1>this is edited nginx 1 version by configMap</h1>
+      </body>
+    </html>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-con2
+data:
+  default.conf: |
+    server {
+      listen       50;
+      listen  [::]:50;
+      server_name  localhost;
+
+      location / {
+          root   /usr/share/nginx/html;
+          index  index.html index.htm;
+      }
+    }
+
+  index.html: |
+    <html>
+      <body>
+        <h1>this is edited nginx 2 version by configMap</h1>
+      </body>
+    </html>
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: podname
+  labels:
+    app: podname
+spec:
+  containers:
+  - name: nginx1
+    image: nginx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: cm1
+      mountPath: /usr/share/nginx/html
+
+  - name: nginx2
+    image: nginx
+    ports:
+    - containerPort: 50
+    volumeMounts:
+    - name: cm2
+      mountPath: /usr/share/nginx/html
+    - name: conf2
+      mountPath: /etc/nginx/conf.d
+
+  volumes:
+  - name: cm1
+    configMap:
+      name: my-con1
+  - name: cm2
+    configMap:
+      name: my-con2
+      items:
+      - key: index.html
+        path: index.html
+  - name: conf2
+    configMap:
+      name: my-con2
+      items:
+      - key: default.conf
+        path: default.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: podname
+  ports:
+  - name: nginx1
+    port: 80
+    targetPort: 80
+  - name: nginx2
+    port: 50
+    targetPort: 50
